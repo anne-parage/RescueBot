@@ -1,0 +1,49 @@
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./services/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+
+  app:
+    build: ./service/api
+    ports:
+      - "8000:8000"
+    volumes:
+        - .:/app
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+    depends_on:
+      - mqtt
+    restart: unless-stopped
+
+  telemetry:
+    build: ./service/telemetrie
+    ports:
+      - "8003:8003"
+    volumes:
+      - rescue-data:/data
+    environment:
+        - MQTT_HOST=mqtt
+        - MQTT_PORT=1883
+    depends_on:
+      - mqtt
+    restart: unless-stopped
+
+  llm:
+    build: ./service/llm
+    ports:
+      - "8001:8001"
+    environment:
+      - LLM_PROVIDER=ollama
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.1
+    restart: unless-stopped
+
+volumes:
+  rescue-data:
