@@ -9,40 +9,43 @@ services:
       - ./services/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf
     restart: unless-stopped
 
-  app:
-    build: ./service/api
+  api:
+    build: ./services/api
+    container_name: api
     ports:
       - "8000:8000"
-    volumes:
-        - .:/app
-    environment:
-      - MQTT_HOST=mqtt
-      - MQTT_PORT=1883
+    env_file: .env
     depends_on:
       - mqtt
     restart: unless-stopped
 
   telemetry:
-    build: ./service/telemetrie
+    build: ./services/telemetry
+    container_name: telemetry
     ports:
       - "8003:8003"
     volumes:
       - rescue-data:/data
-    environment:
-        - MQTT_HOST=mqtt
-        - MQTT_PORT=1883
+    env_file: .env
     depends_on:
       - mqtt
     restart: unless-stopped
 
   llm:
-    build: ./service/llm
+    build: ./services/llm
+    container_name: llm
     ports:
       - "8001:8001"
-    environment:
-      - LLM_PROVIDER=ollama
-      - OLLAMA_URL=http://host.docker.internal:11434
-      - OLLAMA_MODEL=llama3.1
+    env_file: .env
+    restart: unless-stopped
+
+  frontend:
+    build: ./services/frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:
