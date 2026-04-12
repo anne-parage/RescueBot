@@ -51,7 +51,7 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
             resp = await client.post(
                 f"{settings.llm_url}/analyze",
                 json={"prompt": req.prompt, "context": req.context},
-                timeout=60.0,
+                timeout=180.0,
             )
             resp.raise_for_status()
             data = resp.json()
