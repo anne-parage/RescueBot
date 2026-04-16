@@ -52,6 +52,8 @@ services:
     volumes:
       - ./services/frontend:/app
       - /app/node_modules
+    environment:
+      - VITE_DROIDCAM_URL=http://192.168.1.15:4747/video
     depends_on:
       - api
     restart: unless-stopped

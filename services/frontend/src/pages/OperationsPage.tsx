@@ -3,6 +3,7 @@ import ControlPad from '@/components/controls/ControlPad';
 import SpeedPresets from '@/components/controls/SpeedPresets';
 import SensorGauge from '@/components/sensors/SensorGauge';
 import UltrasonicRadar from '@/components/sensors/UltrasonicRadar';
+import VideoStream from '@/components/video/VideoStream';
 import { getAirQualityState, getCOState } from '@/config/thresholds';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useRobotState } from '@/hooks/useRobotState';
@@ -42,8 +43,8 @@ export default function OperationsPage() {
 
       <section className="rounded-md border border-border bg-bg-card p-4">
         <h2 className="text-label">Flux vidéo · DroidCam · 16:9</h2>
-        <div className="mt-3 flex aspect-video items-center justify-center rounded-md bg-video-bg text-xs text-text-tertiary">
-          Vidéo (Phase 4.4)
+        <div className="mt-3">
+          <VideoStream />
         </div>
       </section>
 
