@@ -1,9 +1,18 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Header from './components/layout/Header';
-import OperationsPage from './pages/OperationsPage';
+import { useHeartbeatMonitor } from './hooks/useHeartbeatMonitor';
+import { useWebSocket } from './hooks/useWebSocket';
+import { useMockWebSocket } from './dev/mockWebSocket';
 import MissionsPage from './pages/MissionsPage';
+import OperationsPage from './pages/OperationsPage';
+
+const MOCK_WS = import.meta.env.VITE_MOCK_WS === 'true';
 
 export default function App() {
+  useWebSocket(!MOCK_WS);
+  useMockWebSocket(MOCK_WS);
+  useHeartbeatMonitor();
+
   return (
     <div className="flex h-full flex-col bg-bg-page">
       <Header />

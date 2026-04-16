@@ -13,7 +13,11 @@ class MoveCommand(BaseModel):
         ..., description="Direction: forward, backward, left, right"
     )
     speed: int = Field(
-        default=150, ge=0, le=255, description="Vitesse PWM (0-255)"
+        default=120,
+        ge=80,
+        le=150,
+        multiple_of=5,
+        description="Vitesse PWM. Presets: 80 (Lent), 120 (Normal), 150 (Rapide)",
     )
 
 
