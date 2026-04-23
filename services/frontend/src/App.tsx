@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Header from './components/layout/Header';
+import { useActiveMissionSync } from './hooks/useActiveMissionSync';
 import { useHeartbeatMonitor } from './hooks/useHeartbeatMonitor';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useMockWebSocket } from './dev/mockWebSocket';
@@ -12,6 +13,7 @@ export default function App() {
   useWebSocket(!MOCK_WS);
   useMockWebSocket(MOCK_WS);
   useHeartbeatMonitor();
+  useActiveMissionSync();
 
   return (
     <div className="flex h-full flex-col bg-bg-page">

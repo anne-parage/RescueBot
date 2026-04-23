@@ -2,13 +2,35 @@
 
 import logging
 
+import httpx
 from fastapi import APIRouter
 
+from app.config import settings
 from app.mqtt_client import TOPIC_CMD_MOVE, TOPIC_CMD_STOP, mqtt_client
 from app.schemas import CommandResponse, MoveCommand, RobotStatus, StopCommand
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/cmd", tags=["commands"])
+
+
+async def _touch_active_mission() -> None:
+    """Prolonge le timer de la mission active (fire-and-forget, ignore les erreurs)."""
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{settings.telemetry_url}/missions/active", timeout=2.0
+            )
+            if resp.status_code != 200:
+                return
+            active = resp.json()
+            if not active or active.get("type") != "manual":
+                return
+            await client.post(
+                f"{settings.telemetry_url}/missions/{active['id']}/touch",
+                timeout=2.0,
+            )
+    except (httpx.HTTPError, ValueError) as e:
+        logger.debug("touch_mission ignoré : %s", e)
 
 
 @router.post("/move", response_model=CommandResponse)
@@ -24,6 +46,8 @@ async def move(cmd: MoveCommand) -> CommandResponse:
     if not success:
         msg = "Failed to send move command"
     logger.info(msg)
+    if success:
+        await _touch_active_mission()
     return CommandResponse(success=success, message=msg)
 
 
@@ -40,6 +64,8 @@ async def stop(cmd: StopCommand = StopCommand()) -> CommandResponse:
     if not success:
         msg = "Failed to send stop command"
     logger.info(msg)
+    if success:
+        await _touch_active_mission()
     return CommandResponse(success=success, message=msg)
 
 

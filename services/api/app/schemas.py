@@ -1,5 +1,7 @@
 """Modèles Pydantic pour les entrées/sorties de l'API."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -101,3 +103,42 @@ class AnalyzeResponse(BaseModel):
 
     response: str
     model: str
+
+
+class PlanStep(BaseModel):
+    """Étape d'un plan de mission autonome.
+
+    Exemple: {"order": 1, "text": "Scanner la zone nord"}
+    """
+
+    order: int
+    text: str
+
+
+class StartMissionRequest(BaseModel):
+    """Payload pour démarrer une nouvelle mission.
+
+    Exemple: {"type": "manual", "objective": "Reconnaissance salle 2"}
+    """
+
+    type: Literal["manual", "autonomous"]
+    objective: str | None = None
+    plan: list[PlanStep] | None = None
+    operator: str | None = None
+
+
+class Mission(BaseModel):
+    """Représentation complète d'une mission retournée par l'API.
+
+    Exemple: {"id": 1, "type": "manual", "status": "running", ...}
+    """
+
+    id: int
+    type: str
+    status: str
+    started_at: str
+    ended_at: str | None = None
+    objective: str | None = None
+    plan: list[PlanStep] | None = None
+    operator: str | None = None
+    last_command_at: str | None = None

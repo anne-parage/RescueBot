@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from app.db import fetch_history, init_db
 from app.mqtt_listener import listener
+from app.routes.missions import router as missions_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,6 +39,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="RescueBot Telemetry", version="0.1.0", lifespan=lifespan)
+
+app.include_router(missions_router)
 
 
 @app.get("/health")

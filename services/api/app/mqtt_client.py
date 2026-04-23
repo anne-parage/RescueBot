@@ -17,6 +17,9 @@ TOPIC_GAS = "rescuebot/sensors/gas"
 TOPIC_CMD_MOVE = "rescuebot/cmd/move"
 TOPIC_CMD_STOP = "rescuebot/cmd/stop"
 TOPIC_STATUS = "rescuebot/status"
+TOPIC_MISSION_STARTED = "rescuebot/events/mission_started"
+TOPIC_MISSION_STOPPED = "rescuebot/events/mission_stopped"
+TOPIC_MISSION_TIMEOUT = "rescuebot/events/mission_timeout"
 
 SUBSCRIBE_TOPICS = [TOPIC_ULTRASONIC, TOPIC_GAS, TOPIC_STATUS]
 
