@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { getMission, stopMission } from '@/api/missions';
 import { useMissionStore } from '@/store/useMissionStore';
 import type { Mission } from '@/types/missions';
+import MissionReport from './MissionReport';
 
 const STATUS_LABELS: Record<Mission['status'], string> = {
   running: 'En cours',
@@ -87,6 +88,10 @@ export default function MissionDetail() {
 
   const isRunning = mission.status === 'running';
 
+  if (!isRunning) {
+    return <MissionReport missionId={mission.id} />;
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
@@ -96,28 +101,20 @@ export default function MissionDetail() {
             <span className="rounded-sm border border-border bg-bg-surface px-2 py-0.5 text-xs">
               {TYPE_LABELS[mission.type]}
             </span>
-            <span
-              className={`rounded-sm border px-2 py-0.5 text-xs font-medium ${
-                isRunning
-                  ? 'border-danger-border bg-danger-bg text-danger-text'
-                  : 'border-border bg-bg-surface text-text-secondary'
-              }`}
-            >
+            <span className="rounded-sm border border-danger-border bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger-text">
               {STATUS_LABELS[mission.status]}
             </span>
           </div>
         </div>
 
-        {isRunning && (
-          <button
-            type="button"
-            onClick={handleStop}
-            disabled={stopping}
-            className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-danger-bg hover:bg-danger-strong disabled:opacity-50"
-          >
-            {stopping ? 'Arrêt…' : 'Terminer la mission'}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleStop}
+          disabled={stopping}
+          className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-danger-bg hover:bg-danger-strong disabled:opacity-50"
+        >
+          {stopping ? 'Arrêt…' : 'Terminer la mission'}
+        </button>
       </div>
 
       <div className="rounded-md border border-border bg-bg-card p-4">
@@ -127,15 +124,6 @@ export default function MissionDetail() {
           <dd className="tabular">
             {new Date(mission.started_at).toLocaleString('fr-FR')}
           </dd>
-
-          {mission.ended_at && (
-            <>
-              <dt className="text-text-secondary">Terminée le</dt>
-              <dd className="tabular">
-                {new Date(mission.ended_at).toLocaleString('fr-FR')}
-              </dd>
-            </>
-          )}
 
           <dt className="text-text-secondary">Durée</dt>
           <dd className="tabular">
@@ -168,7 +156,7 @@ export default function MissionDetail() {
       )}
 
       <p className="text-xs text-text-tertiary">
-        Rapport complet (résumé LLM, capteurs, détections) disponible en phase 4.7.
+        Le rapport complet apparaîtra ici quand la mission sera terminée.
       </p>
     </div>
   );

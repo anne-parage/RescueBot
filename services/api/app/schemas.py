@@ -142,3 +142,40 @@ class Mission(BaseModel):
     plan: list[PlanStep] | None = None
     operator: str | None = None
     last_command_at: str | None = None
+
+
+class StatsBlock(BaseModel):
+    """Stats agrégées pour un champ numérique d'un capteur."""
+
+    min: float
+    max: float
+    avg: float
+
+
+class SensorSummary(BaseModel):
+    """Stats capteurs agrégées pour la durée d'une mission.
+
+    Les champs StatsBlock sont None si aucune lecture n'a été reçue.
+    """
+
+    count_gas: int
+    count_ultrasonic: int
+    co_level: StatsBlock | None = None
+    air_quality: StatsBlock | None = None
+    ultrasonic: dict[str, StatsBlock | None]
+
+
+class MissionReport(BaseModel):
+    """Rapport complet d'une mission, généré à la volée.
+
+    Exemple: {"mission": {...}, "duration_seconds": 124, "sensor_summary": {...},
+              "summary_narrative": "La mission s'est..."}
+    """
+
+    mission: Mission
+    duration_seconds: int | None = None
+    sensor_summary: SensorSummary
+    summary_narrative: str | None = None
+    summary_error: str | None = None
+    global_evaluation: str | None = None
+    global_evaluation_error: str | None = None

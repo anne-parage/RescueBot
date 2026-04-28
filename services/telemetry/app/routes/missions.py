@@ -12,6 +12,7 @@ from app.db import (
     create_mission,
     get_active_mission_id,
     get_mission,
+    get_sensor_summary,
     list_missions,
     list_timed_out_missions,
     touch_mission,
@@ -161,3 +162,16 @@ async def touch_mission_endpoint(mission_id: int) -> None:
     if mission is None:
         raise HTTPException(status_code=404, detail="Mission introuvable")
     await touch_mission(mission_id)
+
+
+@router.get("/{mission_id}/sensor_summary")
+async def sensor_summary_endpoint(mission_id: int) -> dict:
+    """Retourne les stats agrégées (min/max/avg) des capteurs pendant une mission.
+
+    Exemple: GET /missions/42/sensor_summary
+    Réponse: {"count_gas": 152, "co_level": {...}, "ultrasonic": {...}, ...}
+    """
+    mission = await get_mission(mission_id)
+    if mission is None:
+        raise HTTPException(status_code=404, detail="Mission introuvable")
+    return await get_sensor_summary(mission_id)

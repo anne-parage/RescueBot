@@ -12,10 +12,18 @@ export default function StopButton() {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'Escape') {
-        e.preventDefault();
-        sendStop();
+      if (e.code !== 'Space' && e.code !== 'Escape') return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
       }
+      e.preventDefault();
+      sendStop();
     };
 
     window.addEventListener('keydown', handleKey);

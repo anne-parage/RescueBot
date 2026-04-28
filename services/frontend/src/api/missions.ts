@@ -2,6 +2,7 @@ import axios from 'axios';
 import type {
   Mission,
   MissionFilters,
+  MissionReport,
   MissionType,
   PlanStep,
 } from '@/types/missions';
@@ -49,4 +50,13 @@ export async function getMission(id: number): Promise<Mission> {
 export async function getActiveMission(): Promise<Mission | null> {
   const { data } = await axios.get<Mission | null>(`${BASE}/active`);
   return data;
+}
+
+export async function getReport(id: number): Promise<MissionReport> {
+  const { data } = await axios.get<MissionReport>(`${BASE}/${id}/report`);
+  return data;
+}
+
+export function getReportPdfUrl(id: number): string {
+  return `${BASE}/${id}/report.pdf`;
 }

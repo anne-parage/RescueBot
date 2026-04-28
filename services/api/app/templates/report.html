@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport Mission #{{ mission.id }}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body {
+    font-family: "DejaVu Sans", sans-serif;
+    color: #2C2C2A;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  h1 { font-size: 18pt; margin: 0 0 4mm 0; font-weight: 600; }
+  h2 {
+    font-size: 12pt;
+    margin: 8mm 0 2mm 0;
+    padding-bottom: 1mm;
+    border-bottom: 1px solid #B4B2A9;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .header { border-bottom: 2px solid #185FA5; padding-bottom: 3mm; margin-bottom: 6mm; }
+  .subtitle { color: #5F5E5A; font-size: 10pt; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 1.5mm 2mm; vertical-align: top; }
+  td.label { color: #5F5E5A; width: 38%; }
+  .stats-table th {
+    text-align: left;
+    color: #5F5E5A;
+    font-weight: normal;
+    border-bottom: 1px solid #D3D1C7;
+    padding: 1mm 2mm;
+  }
+  .stats-table td { border-bottom: 1px solid #F1EFE8; }
+  .stats-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .narrative {
+    background: #F7F6F2;
+    padding: 4mm;
+    border-left: 3px solid #185FA5;
+    margin: 2mm 0;
+  }
+  .unavailable {
+    color: #5F5E5A;
+    font-style: italic;
+  }
+  .plan li { margin: 1mm 0; }
+  .footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 8pt;
+    color: #888780;
+    border-top: 1px solid #D3D1C7;
+    padding-top: 2mm;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Rapport mission #{{ mission.id }}</h1>
+  <div class="subtitle">RescueBot — généré le {{ generated_at }}</div>
+</div>
+
+<h2>Métadonnées</h2>
+<table>
+  <tr><td class="label">Type</td><td>{{ type_label }}</td></tr>
+  <tr><td class="label">Statut</td><td>{{ status_label }}</td></tr>
+  <tr><td class="label">Démarrée</td><td>{{ started_at_fmt }}</td></tr>
+  {% if ended_at_fmt %}<tr><td class="label">Terminée</td><td>{{ ended_at_fmt }}</td></tr>{% endif %}
+  {% if duration_fmt %}<tr><td class="label">Durée</td><td>{{ duration_fmt }}</td></tr>{% endif %}
+  <tr><td class="label">Objectif</td><td>{{ mission.objective or "(non précisé)" }}</td></tr>
+</table>
+
+<h2>Résumé narratif</h2>
+{% if summary_narrative %}
+  <div class="narrative">{{ summary_narrative }}</div>
+{% else %}
+  <p class="unavailable">{{ summary_error or "Résumé indisponible" }}</p>
+{% endif %}
+
+<h2>Capteurs ({{ sensor_summary.count_gas }} gas, {{ sensor_summary.count_ultrasonic }} ultrason)</h2>
+<table class="stats-table">
+  <tr><th>Capteur</th><th class="num">Min</th><th class="num">Max</th><th class="num">Moyenne</th><th>Unité</th></tr>
+  {% for row in stats_rows %}
+  <tr>
+    <td>{{ row.label }}</td>
+    {% if row.stats %}
+      <td class="num">{{ "%.1f"|format(row.stats.min) }}</td>
+      <td class="num">{{ "%.1f"|format(row.stats.max) }}</td>
+      <td class="num">{{ "%.1f"|format(row.stats.avg) }}</td>
+      <td>{{ row.unit }}</td>
+    {% else %}
+      <td class="num unavailable" colspan="4">aucune lecture</td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+</table>
+
+{% if mission.plan %}
+<h2>Plan d'exécution</h2>
+<ol class="plan">
+  {% for step in mission.plan %}
+  <li>{{ step.text }}</li>
+  {% endfor %}
+</ol>
+{% endif %}
+
+{% if mission.type == "autonomous" %}
+<h2>Évaluation globale</h2>
+{% if global_evaluation %}
+  <div class="narrative">{{ global_evaluation }}</div>
+{% else %}
+  <p class="unavailable">{{ global_evaluation_error or "Évaluation indisponible" }}</p>
+{% endif %}
+{% endif %}
+
+<div class="footer">
+  RescueBot · Rapport de mission · {{ mission.id }}
+</div>
+
+</body>
+</html>

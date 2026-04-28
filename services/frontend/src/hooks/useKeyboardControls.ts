@@ -43,10 +43,21 @@ export function useKeyboardControls({
   useEffect(() => {
     if (disabled) return;
 
+    const isEditableTarget = (e: KeyboardEvent): boolean => {
+      const target = e.target as HTMLElement | null;
+      return Boolean(
+        target &&
+          (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable),
+      );
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
       const direction = CODE_TO_DIRECTION[e.code];
       if (!direction) return;
+      if (isEditableTarget(e)) return;
       e.preventDefault();
       setActiveKey(direction);
       sendMove(direction);
@@ -55,6 +66,7 @@ export function useKeyboardControls({
     const handleKeyUp = (e: KeyboardEvent) => {
       const direction = CODE_TO_DIRECTION[e.code];
       if (!direction) return;
+      if (isEditableTarget(e)) return;
       e.preventDefault();
       setActiveKey(null);
       sendStop();

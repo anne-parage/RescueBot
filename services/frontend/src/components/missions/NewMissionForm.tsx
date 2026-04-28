@@ -17,7 +17,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { generatePlan } from '@/api/llm';
 import { startMission } from '@/api/missions';
+import { useRobotStore } from '@/store/useRobotStore';
 import type { MissionType } from '@/types/missions';
 import PlanStep from './PlanStep';
 
@@ -70,6 +72,7 @@ export default function NewMissionForm() {
   const [objective, setObjective] = useState('');
   const [steps, setSteps] = useState<DraftStep[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [planLoading, setPlanLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -79,12 +82,23 @@ export default function NewMissionForm() {
     }),
   );
 
-  const proposePlan = () => {
-    setSteps([
-      { id: generateId(), text: 'Étape 1 — à éditer' },
-      { id: generateId(), text: 'Étape 2 — à éditer' },
-      { id: generateId(), text: 'Étape 3 — à éditer' },
-    ]);
+  const proposePlan = async () => {
+    if (!objective.trim()) {
+      setError("Saisis d'abord un objectif avant de demander un plan.");
+      return;
+    }
+    setError(null);
+    setPlanLoading(true);
+    try {
+      const { gas, ultrasonic } = useRobotStore.getState();
+      const plan = await generatePlan(objective.trim(), { gas, ultrasonic });
+      setSteps(plan.map((s) => ({ id: generateId(), text: s.text })));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Échec de la génération';
+      setError(msg);
+    } finally {
+      setPlanLoading(false);
+    }
   };
 
   const addStep = () => {
@@ -185,9 +199,10 @@ export default function NewMissionForm() {
               <button
                 type="button"
                 onClick={proposePlan}
-                className="rounded-md border border-border bg-bg-card px-3 py-1 text-xs text-text-secondary hover:text-text-primary"
+                disabled={planLoading}
+                className="rounded-md border border-border bg-bg-card px-3 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50"
               >
-                Proposer un plan
+                {planLoading ? 'Génération…' : 'Proposer un plan'}
               </button>
               <button
                 type="button"

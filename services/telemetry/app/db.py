@@ -231,6 +231,73 @@ async def touch_mission(mission_id: int) -> None:
         await db.commit()
 
 
+def _stats(values: list[float]) -> dict | None:
+    """Calcule min/max/avg pour une liste de valeurs numériques."""
+    if not values:
+        return None
+    return {
+        "min": min(values),
+        "max": max(values),
+        "avg": sum(values) / len(values),
+    }
+
+
+async def get_sensor_summary(mission_id: int) -> dict:
+    """Agrège les stats min/max/avg des capteurs pendant une mission.
+
+    Retourne un dict avec count_gas, count_ultrasonic, co_level, air_quality,
+    ultrasonic (front/back/left/right). Champs à None si aucune donnée.
+    """
+    co_levels: list[float] = []
+    air_qualities: list[float] = []
+    ultrasonics: dict[str, list[float]] = {
+        "front": [],
+        "back": [],
+        "left": [],
+        "right": [],
+    }
+
+    async with aiosqlite.connect(settings.db_path) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT sensor_type, payload FROM sensor_readings"
+            " WHERE mission_id = ?",
+            (mission_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+
+    count_gas = 0
+    count_ultrasonic = 0
+    for row in rows:
+        try:
+            payload = json.loads(row["payload"])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if row["sensor_type"] == "gas":
+            count_gas += 1
+            if isinstance(payload.get("co_level"), (int, float)):
+                co_levels.append(float(payload["co_level"]))
+            if isinstance(payload.get("air_quality"), (int, float)):
+                air_qualities.append(float(payload["air_quality"]))
+        elif row["sensor_type"] == "ultrasonic":
+            count_ultrasonic += 1
+            for direction in ("front", "back", "left", "right"):
+                value = payload.get(direction)
+                if isinstance(value, (int, float)):
+                    ultrasonics[direction].append(float(value))
+
+    return {
+        "count_gas": count_gas,
+        "count_ultrasonic": count_ultrasonic,
+        "co_level": _stats(co_levels),
+        "air_quality": _stats(air_qualities),
+        "ultrasonic": {
+            direction: _stats(values)
+            for direction, values in ultrasonics.items()
+        },
+    }
+
+
 async def list_timed_out_missions(timeout_seconds: int) -> list[int]:
     """Retourne les IDs des missions manuelles inactives depuis > timeout_seconds."""
     cutoff = datetime.now(timezone.utc).timestamp() - timeout_seconds

@@ -28,3 +28,29 @@ export interface MissionFilters {
   status: MissionStatus | null;
   search: string;
 }
+
+export interface StatsBlock {
+  min: number;
+  max: number;
+  avg: number;
+}
+
+export type UltrasonicDirection = 'front' | 'back' | 'left' | 'right';
+
+export interface SensorSummary {
+  count_gas: number;
+  count_ultrasonic: number;
+  co_level: StatsBlock | null;
+  air_quality: StatsBlock | null;
+  ultrasonic: Record<UltrasonicDirection, StatsBlock | null>;
+}
+
+export interface MissionReport {
+  mission: Mission;
+  duration_seconds: number | null;
+  sensor_summary: SensorSummary;
+  summary_narrative: string | null;
+  summary_error: string | null;
+  global_evaluation: string | null;
+  global_evaluation_error: string | null;
+}

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 
 from app.config import settings
 from app.mqtt_client import (
@@ -12,7 +13,8 @@ from app.mqtt_client import (
     TOPIC_MISSION_STOPPED,
     mqtt_client,
 )
-from app.schemas import Mission, StartMissionRequest
+from app.pdf import render_report_pdf
+from app.schemas import Mission, MissionReport, StartMissionRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/missions", tags=["missions"])
@@ -166,3 +168,146 @@ async def get_mission(mission_id: int) -> dict:
     Exemple: GET /missions/42
     """
     return await _telemetry_get(f"/missions/{mission_id}")  # type: ignore[return-value]
+
+
+def _format_stats(label: str, stats: dict | None, unit: str) -> str:
+    """Formate un bloc de stats pour le prompt LLM."""
+    if stats is None:
+        return f"- {label} : aucune lecture"
+    return (
+        f"- {label} : min {stats['min']:.1f}{unit}, max {stats['max']:.1f}{unit},"
+        f" moyenne {stats['avg']:.1f}{unit}"
+    )
+
+
+def _build_narrative_prompt(mission: dict, summary: dict, duration: int | None) -> str:
+    """Construit le prompt de résumé narratif pour le LLM."""
+    duration_str = f"{duration} secondes" if duration is not None else "inconnue"
+    objective = mission.get("objective") or "non précisé"
+    lines = [
+        "Génère un résumé narratif d'une mission de reconnaissance robotique"
+        " en 2 ou 3 phrases en français.",
+        "",
+        f"Mission #{mission['id']} ({mission['type']}) — durée {duration_str}",
+        f"Statut final : {mission['status']}",
+        f"Objectif : \"{objective}\"",
+        "",
+        "Statistiques capteurs :",
+        _format_stats("Monoxyde de carbone (CO)", summary.get("co_level"), " ppm"),
+        _format_stats("Qualité de l'air", summary.get("air_quality"), "/100"),
+        f"- {summary['count_gas']} lectures gas, "
+        f"{summary['count_ultrasonic']} lectures ultrasonic",
+        "",
+        "Réponds UNIQUEMENT avec le résumé narratif, sans markdown, sans titre,"
+        " sans introduction.",
+    ]
+    return "\n".join(lines)
+
+
+def _build_evaluation_prompt(mission: dict, summary: dict) -> str:
+    """Construit le prompt d'évaluation globale pour les missions autonomes."""
+    plan = mission.get("plan") or []
+    plan_str = "\n".join(f"  {s['order']}. {s['text']}" for s in plan) or "  (aucun)"
+    return (
+        f"Évalue brièvement (3 phrases max, en français) le déroulé de cette"
+        f" mission autonome.\n\n"
+        f"Objectif : \"{mission.get('objective') or 'non précisé'}\"\n"
+        f"Plan d'exécution prévu :\n{plan_str}\n\n"
+        f"Données capteurs collectées : {summary['count_gas']} gas,"
+        f" {summary['count_ultrasonic']} ultrasonic.\n\n"
+        f"Réponds UNIQUEMENT avec l'évaluation en texte plat, sans markdown."
+    )
+
+
+async def _call_llm(prompt: str) -> str:
+    """Appelle le service LLM. Lève httpx.HTTPError si problème."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{settings.llm_url}/analyze",
+            json={"prompt": prompt, "context": {}},
+            timeout=180.0,
+        )
+        resp.raise_for_status()
+        return resp.json()["response"]
+
+
+def _compute_duration(mission: dict) -> int | None:
+    """Calcule la durée de la mission en secondes (None si pas de fin)."""
+    if not mission.get("ended_at"):
+        return None
+    try:
+        start = datetime.fromisoformat(mission["started_at"])
+        end = datetime.fromisoformat(mission["ended_at"])
+        return int((end - start).total_seconds())
+    except (ValueError, KeyError):
+        return None
+
+
+@router.get("/{mission_id}/report", response_model=MissionReport)
+async def get_mission_report(mission_id: int) -> dict:
+    """Génère le rapport complet d'une mission (capteurs + résumé LLM).
+
+    Si Ollama est injoignable, le rapport est renvoyé avec
+    summary_narrative=null et un message dans summary_error.
+
+    Exemple: GET /missions/42/report
+    """
+    mission = await _telemetry_get(f"/missions/{mission_id}")
+    if not isinstance(mission, dict):
+        raise HTTPException(status_code=404, detail="Mission introuvable")
+
+    summary = await _telemetry_get(f"/missions/{mission_id}/sensor_summary")
+    duration = _compute_duration(mission)
+
+    narrative: str | None = None
+    narrative_error: str | None = None
+    try:
+        narrative = (await _call_llm(_build_narrative_prompt(
+            mission, summary, duration
+        ))).strip()
+    except httpx.HTTPError as e:
+        logger.warning("LLM narrative indisponible: %s", e)
+        narrative_error = "Résumé narratif indisponible (service LLM injoignable)"
+
+    evaluation: str | None = None
+    evaluation_error: str | None = None
+    if mission["type"] == "autonomous":
+        try:
+            evaluation = (await _call_llm(
+                _build_evaluation_prompt(mission, summary)
+            )).strip()
+        except httpx.HTTPError as e:
+            logger.warning("LLM evaluation indisponible: %s", e)
+            evaluation_error = (
+                "Évaluation globale indisponible (service LLM injoignable)"
+            )
+
+    return {
+        "mission": mission,
+        "duration_seconds": duration,
+        "sensor_summary": summary,
+        "summary_narrative": narrative,
+        "summary_error": narrative_error,
+        "global_evaluation": evaluation,
+        "global_evaluation_error": evaluation_error,
+    }
+
+
+@router.get("/{mission_id}/report.pdf")
+async def get_mission_report_pdf(mission_id: int) -> Response:
+    """Génère et renvoie le rapport au format PDF.
+
+    Exemple: GET /missions/42/report.pdf
+    Réponse: application/pdf
+    """
+    report = await get_mission_report(mission_id)
+    pdf_bytes = render_report_pdf(report)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="rapport_mission_{mission_id}.pdf"'
+            ),
+        },
+    )
