@@ -123,6 +123,26 @@ body {
   }
 }
 
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes flash-danger {
+  0% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 .animate-blink {
   animation: blink 1.2s ease-in-out infinite;
 }
@@ -131,6 +151,12 @@ body {
 }
 .animate-bounce-dot {
   animation: bounce 1.4s ease-in-out infinite;
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+.animate-flash-danger {
+  animation: flash-danger 0.5s ease-out forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

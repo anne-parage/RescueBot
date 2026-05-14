@@ -10,33 +10,45 @@ import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useRobotState } from '@/hooks/useRobotState';
 import { useMissionStore } from '@/store/useMissionStore';
 import { useRobotStore } from '@/store/useRobotStore';
+import { useToastStore } from '@/store/useToastStore';
 
 export default function OperationsPage() {
   const gas = useRobotStore((s) => s.gas);
   const ultrasonic = useRobotStore((s) => s.ultrasonic);
   const coHistory = useRobotStore((s) => s.coHistory);
-  const { canPilot } = useRobotState();
+  const { canPilot, isDisconnectedAndWasConnected } = useRobotState();
+  const sensorsClass = isDisconnectedAndWasConnected
+    ? 'opacity-35 transition-opacity'
+    : 'transition-opacity';
   const activeMission = useMissionStore((s) => s.activeMission);
   const setActiveMission = useMissionStore((s) => s.setActiveMission);
+  const pushToast = useToastStore((s) => s.push);
 
   const [speed, setSpeed] = useState<80 | 120 | 150>(120);
   const [missionBusy, setMissionBusy] = useState(false);
-  const [missionError, setMissionError] = useState<string | null>(null);
   const { activeKey } = useKeyboardControls({ disabled: !canPilot, speed });
 
   const handleStart = async () => {
-    setMissionError(null);
     setMissionBusy(true);
     try {
       const mission = await startMission({ type: 'manual' });
       setActiveMission(mission);
+      pushToast({
+        type: 'success',
+        title: 'Mission démarrée',
+        description: `Mission #${mission.id} en cours.`,
+      });
     } catch (e: unknown) {
       const detail =
         e && typeof e === 'object' && 'response' in e
           ? (e as { response?: { data?: { detail?: string } } }).response?.data
               ?.detail
           : null;
-      setMissionError(detail ?? 'Impossible de démarrer la mission');
+      pushToast({
+        type: 'error',
+        title: 'Échec du démarrage',
+        description: detail ?? 'Impossible de démarrer la mission',
+      });
     } finally {
       setMissionBusy(false);
     }
@@ -44,13 +56,22 @@ export default function OperationsPage() {
 
   const handleStop = async () => {
     if (!activeMission) return;
-    setMissionError(null);
+    const id = activeMission.id;
     setMissionBusy(true);
     try {
-      await stopMission(activeMission.id);
+      await stopMission(id);
       setActiveMission(null);
+      pushToast({
+        type: 'info',
+        title: 'Mission terminée',
+        description: `Mission #${id} arrêtée.`,
+      });
     } catch {
-      setMissionError("Impossible d'arrêter la mission");
+      pushToast({
+        type: 'error',
+        title: 'Erreur',
+        description: "Impossible d'arrêter la mission.",
+      });
     } finally {
       setMissionBusy(false);
     }
@@ -58,7 +79,7 @@ export default function OperationsPage() {
 
   return (
     <div className="grid h-full grid-cols-[280px_1fr_280px] gap-3 p-3">
-      <aside className="flex flex-col gap-2">
+      <aside className={`flex flex-col gap-2 ${sensorsClass}`}>
         <h2 className="text-label">Capteurs environnementaux</h2>
         <SensorGauge
           label="CO — Monoxyde"
@@ -87,8 +108,10 @@ export default function OperationsPage() {
       </section>
 
       <aside className="flex flex-col gap-2">
-        <h2 className="text-label">Navigation</h2>
-        <UltrasonicRadar distances={ultrasonic} />
+        <div className={`flex flex-col gap-2 ${sensorsClass}`}>
+          <h2 className="text-label">Navigation</h2>
+          <UltrasonicRadar distances={ultrasonic} />
+        </div>
         <h2 className="mt-2 text-label">Pilotage manuel</h2>
         <div className="rounded-md border border-border bg-bg-card p-3">
           <ControlPad activeKey={activeKey} disabled={!canPilot} />
@@ -121,11 +144,6 @@ export default function OperationsPage() {
           </button>
         )}
 
-        {missionError && (
-          <p className="rounded-md border border-danger-border bg-danger-bg p-2 text-xs text-danger-text">
-            {missionError}
-          </p>
-        )}
       </aside>
     </div>
   );

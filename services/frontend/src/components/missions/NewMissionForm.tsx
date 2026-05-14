@@ -20,6 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { generatePlan } from '@/api/llm';
 import { startMission } from '@/api/missions';
 import { useRobotStore } from '@/store/useRobotStore';
+import { useToastStore } from '@/store/useToastStore';
 import type { MissionType } from '@/types/missions';
 import PlanStep from './PlanStep';
 
@@ -68,6 +69,7 @@ function SortablePlanStep({
 
 export default function NewMissionForm() {
   const navigate = useNavigate();
+  const pushToast = useToastStore((s) => s.push);
   const [type, setType] = useState<MissionType>('manual');
   const [objective, setObjective] = useState('');
   const [steps, setSteps] = useState<DraftStep[]>([]);
@@ -140,6 +142,11 @@ export default function NewMissionForm() {
             ? steps.map((s, i) => ({ order: i + 1, text: s.text }))
             : undefined,
       });
+      pushToast({
+        type: 'success',
+        title: 'Mission lancée',
+        description: `Mission #${mission.id} (${mission.type}) en cours.`,
+      });
       navigate(`/missions/${mission.id}`);
     } catch (e: unknown) {
       const msg =
@@ -147,6 +154,11 @@ export default function NewMissionForm() {
           ? (e as { response?: { data?: { detail?: string } } }).response?.data
               ?.detail
           : null;
+      pushToast({
+        type: 'error',
+        title: 'Échec du lancement',
+        description: msg ?? 'Impossible de lancer la mission',
+      });
       setError(msg ?? 'Impossible de lancer la mission');
     } finally {
       setSubmitting(false);

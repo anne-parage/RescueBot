@@ -20,7 +20,8 @@ function formatTimer(startedAt: string, now: number): string {
 }
 
 export default function Header() {
-  const { connected, secondsSinceHeartbeat } = useRobotState();
+  const { connected, secondsSinceHeartbeat, isDisconnectedAndWasConnected } =
+    useRobotState();
   const activeMission = useMissionStore((s) => s.activeMission);
   const [now, setNow] = useState(Date.now());
 
@@ -30,13 +31,33 @@ export default function Header() {
     return () => window.clearInterval(id);
   }, [activeMission]);
 
-  const dotClass = connected ? 'bg-success' : 'bg-text-tertiary';
-  const statusLabel = connected ? 'Robot connecté' : 'Robot déconnecté';
+  const headerClass = isDisconnectedAndWasConnected
+    ? 'bg-text-primary text-bg-card border-text-primary'
+    : 'bg-bg-card text-text-primary border-border';
+  const dotClass = connected
+    ? 'bg-success'
+    : isDisconnectedAndWasConnected
+      ? 'bg-text-tertiary animate-blink'
+      : 'bg-text-tertiary';
+  const statusLabel = connected
+    ? 'Robot connecté'
+    : isDisconnectedAndWasConnected
+      ? `Robot déconnecté — dernier heartbeat il y a ${secondsSinceHeartbeat}s`
+      : 'Robot déconnecté';
   const hbLabel =
-    secondsSinceHeartbeat !== null ? `HB ${secondsSinceHeartbeat}s` : 'HB —';
+    secondsSinceHeartbeat !== null && !isDisconnectedAndWasConnected
+      ? `HB ${secondsSinceHeartbeat}s`
+      : !secondsSinceHeartbeat
+        ? 'HB —'
+        : '';
+  const statusTextClass = isDisconnectedAndWasConnected
+    ? 'text-bg-card'
+    : 'text-text-secondary';
 
   return (
-    <header className="flex h-[72px] shrink-0 items-center gap-4 border-b border-border bg-bg-card px-6">
+    <header
+      className={`flex h-[72px] shrink-0 items-center gap-4 border-b px-6 transition-colors ${headerClass}`}
+    >
       <div className="flex items-center gap-3">
         <div
           aria-hidden="true"
@@ -45,13 +66,13 @@ export default function Header() {
         <span className="text-h2">RescueBot</span>
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-text-secondary">
+      <div className={`flex items-center gap-2 text-sm ${statusTextClass}`}>
         <span
           aria-hidden="true"
           className={`h-2 w-2 rounded-full ${dotClass}`}
         />
         <span>{statusLabel}</span>
-        <span className="tabular text-text-tertiary">{hbLabel}</span>
+        {hbLabel && <span className="tabular opacity-70">{hbLabel}</span>}
       </div>
 
       {activeMission && (

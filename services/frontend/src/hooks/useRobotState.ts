@@ -5,6 +5,7 @@ export interface RobotDerivedState {
   canPilot: boolean;
   canDialog: boolean;
   secondsSinceHeartbeat: number | null;
+  isDisconnectedAndWasConnected: boolean;
 }
 
 export function useRobotState(): RobotDerivedState {
@@ -24,5 +25,7 @@ export function useRobotState(): RobotDerivedState {
     canPilot: connected,
     canDialog: connected,
     secondsSinceHeartbeat,
+    isDisconnectedAndWasConnected:
+      !connected && secondsSinceHeartbeat !== null,
   };
 }

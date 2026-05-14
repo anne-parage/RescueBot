@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { listMissions } from '@/api/missions';
+import SkeletonMissionList from '@/components/skeletons/SkeletonMissionList';
 import { useMissionStore } from '@/store/useMissionStore';
 import type { MissionFilters } from '@/types/missions';
 import MissionCard from './MissionCard';
@@ -111,14 +112,7 @@ export default function MissionList() {
 
       <div className="flex-1 overflow-auto">
         {loading && missions.length === 0 ? (
-          <div className="space-y-2">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-20 animate-pulse-slow rounded-md border border-border bg-bg-surface"
-              />
-            ))}
-          </div>
+          <SkeletonMissionList count={3} />
         ) : missions.length === 0 ? (
           <p className="mt-4 text-center text-xs text-text-tertiary">
             Aucune mission
