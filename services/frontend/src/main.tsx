@@ -3,9 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './styles/globals.css';
+import { installAxiosLogger } from './api/_axios';
 import { useRobotStore } from './store/useRobotStore';
 import { useToastStore } from './store/useToastStore';
 import { useMissionStore } from './store/useMissionStore';
+
+installAxiosLogger();
 
 if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).rescuebot = {

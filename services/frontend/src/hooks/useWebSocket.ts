@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useDebugLogStore } from '@/store/useDebugLogStore';
 import { useRobotStore } from '@/store/useRobotStore';
 import type { WSMessage } from '@/types/sensors';
 
@@ -33,20 +34,37 @@ export function useWebSocket(enabled = true): void {
 
       ws.onopen = () => {
         attemptRef.current = 0;
+        useDebugLogStore.getState().push({
+          kind: 'info',
+          label: 'WebSocket connecté',
+        });
       };
 
       ws.onmessage = (event) => {
         try {
           const parsed = JSON.parse(event.data) as WSMessage;
           useRobotStore.getState().applyWSMessage(parsed);
+          useDebugLogStore.getState().push({
+            kind: 'ws',
+            label: parsed.type,
+            payload: parsed.data,
+          });
         } catch {
-          // Payload malformé — ignoré silencieusement
+          useDebugLogStore.getState().push({
+            kind: 'err',
+            label: 'WS payload malformé',
+            payload: event.data,
+          });
         }
       };
 
       ws.onclose = () => {
         socketRef.current = null;
         useRobotStore.getState().markDisconnected();
+        useDebugLogStore.getState().push({
+          kind: 'info',
+          label: 'WebSocket fermé',
+        });
         if (closedRef.current) return;
         const delay = computeDelay(attemptRef.current);
         attemptRef.current += 1;
@@ -54,6 +72,10 @@ export function useWebSocket(enabled = true): void {
       };
 
       ws.onerror = () => {
+        useDebugLogStore.getState().push({
+          kind: 'err',
+          label: 'WebSocket erreur',
+        });
         ws.close();
       };
     };

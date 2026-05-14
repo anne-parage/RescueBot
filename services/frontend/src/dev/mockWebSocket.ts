@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useDebugLogStore } from '@/store/useDebugLogStore';
 import { useRobotStore } from '@/store/useRobotStore';
 import type { GasData, UltrasonicData } from '@/types/sensors';
 
@@ -39,6 +40,9 @@ export function useMockWebSocket(enabled: boolean): void {
 
     let state = initialBaseline();
     const apply = useRobotStore.getState().applyWSMessage;
+    const pushDebug = useDebugLogStore.getState().push;
+
+    pushDebug({ kind: 'info', label: 'Mock WebSocket démarré' });
 
     const id = window.setInterval(() => {
       state = {
@@ -56,6 +60,8 @@ export function useMockWebSocket(enabled: boolean): void {
       const now = new Date().toISOString();
       apply({ type: 'ultrasonic', data: state.ultrasonic, timestamp: now });
       apply({ type: 'gas', data: state.gas, timestamp: now });
+      pushDebug({ kind: 'ws', label: 'ultrasonic', payload: state.ultrasonic });
+      pushDebug({ kind: 'ws', label: 'gas', payload: state.gas });
     }, TICK_MS);
 
     return () => window.clearInterval(id);
