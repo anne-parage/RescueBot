@@ -2,49 +2,48 @@
 // Cerveau temps réel : lecture des capteurs, pilotage moteurs et sécurité
 // obstacle. Communique avec l'ESP32 (pont WiFi/MQTT) via Serial1.
 //
-// Sous-étape 5.2 : capteurs + moteurs (DRI0044/TB6612) + sécurité obstacle.
-// Banc d'essai clavier via le moniteur série USB (z/s/q/d/x), TEMPORAIRE :
-// remplacé en 5.3 par la réception des commandes depuis l'ESP32.
+// Sous-étape 5.3 : reçoit les commandes (M/S/C) de l'ESP32 sur Serial1,
+// émet la télémétrie (U/G) et les événements (B). Serial USB = debug.
 
 #include "config.h"
 #include "gas.h"
 #include "motors.h"
+#include "serial_link.h"
 #include "ultrasonic.h"
 
-// Banc d'essai : pilote les moteurs depuis une touche du moniteur série.
-static void handleTestKey(char c, float frontCm) {
-  switch (c) {
-    case 'z':
-      motorsMove("forward", 120, frontCm);
+// Exécute une commande reçue de l'ESP32 (dispatch vers les modules).
+static void dispatchCommand(const Command& cmd, float frontCm) {
+  switch (cmd.type) {
+    case CMD_MOVE: {
+      MoveResult res = motorsMove(cmd.direction, cmd.speed, frontCm);
+      if (res == MOVE_BLOCKED_OBSTACLE) {
+        serialLinkSendObstacleBlocked("forward", frontCm);
+      }
       break;
-    case 's':
-      motorsMove("backward", 120, frontCm);
-      break;
-    case 'q':
-      motorsMove("left", 120, frontCm);
-      break;
-    case 'd':
-      motorsMove("right", 120, frontCm);
-      break;
-    case 'x':
+    }
+    case CMD_STOP:
       motorsStop();
       break;
+    case CMD_CALIBRATE:
+      gasCalibrate();
+      break;
+    case CMD_NONE:
     default:
-      break;  // ignore les retours à la ligne et autres touches
+      break;
   }
 }
 
 void setup() {
   Serial.begin(SERIAL_DEBUG_BAUD);
+  serialLinkInit();
   ultrasonicInit();
   gasInit();
   motorsInit();
-  Serial.println("[MEGA] Démarré — étape 5.2 (capteurs + moteurs)");
-  Serial.println("[MEGA] Test clavier : z=avant s=arrière q=gauche d=droite x=stop");
+  Serial.println("[MEGA] Démarré — étape 5.3 (lien série ESP32)");
 }
 
 void loop() {
-  // Calibration des gaz sur appui du bouton (lit 5 s d'air ambiant).
+  // Calibration des gaz sur appui du bouton (alternative à la commande C).
   if (gasCalibButtonPressed()) {
     gasCalibrate();
   }
@@ -56,20 +55,19 @@ void loop() {
   // Sécurité continue : arrêt d'urgence si on avance vers un obstacle proche.
   motorsTick(u.front);
 
-  // Banc d'essai clavier (sera remplacé par les commandes ESP32 en 5.3).
-  if (Serial.available() > 0) {
-    char c = Serial.read();
-    handleTestKey(c, u.front);
-  }
+  // Réception et exécution des commandes de l'ESP32.
+  Command cmd = serialLinkPoll();
+  dispatchCommand(cmd, u.front);
 
-  // Log debug ultrason.
+  // Émission ultrason vers l'ESP32 + log debug USB.
   if (newUltrasonic) {
+    serialLinkSendUltrasonic(u);
+
     char buf[80];
     char f[8];
     char b[8];
     char l[8];
     char r[8];
-    // dtostrf : snprintf %f n'est pas supporté sur AVR (Mega).
     dtostrf(u.front, 0, 1, f);
     dtostrf(u.back, 0, 1, b);
     dtostrf(u.left, 0, 1, l);
@@ -78,9 +76,11 @@ void loop() {
     Serial.println(buf);
   }
 
-  // Log debug gaz (toutes les 500 ms).
+  // Émission gaz vers l'ESP32 + log debug USB (toutes les 500 ms).
   if (gasTick()) {
     GasReading g = gasGet();
+    serialLinkSendGas(g);
+
     char buf[60];
     char co[8];
     char aq[8];
