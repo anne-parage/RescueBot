@@ -48,7 +48,25 @@
 #define EEPROM_ADDR_MAGIC 8           // octet de validité
 #define EEPROM_MAGIC 0x42             // marqueur : EEPROM déjà calibrée
 
-// ===== Moteurs L298N + sécurité obstacle =====
-// Ajoutés en sous-étape 5.2.
+// ===== Moteurs — DFRobot DRI0044 (puce TB6612FNG) =====
+// Pilotage en 2 broches par moteur : DIR (sens) + PWM (vitesse).
+// Moteur "left" = côté gauche, "right" = côté droit.
+// Convention : DIR à MOTOR_DIR_FORWARD = marche avant. Si un moteur tourne
+// à l'envers, inverser ses deux fils moteur (ou échanger les deux #define ci-dessous).
+#define PIN_MOTOR_PWM_LEFT 5    // PWM1 — vitesse gauche (broche PWM Mega)
+#define PIN_MOTOR_DIR_LEFT 4    // DIR1 — sens gauche
+#define PIN_MOTOR_PWM_RIGHT 6   // PWM2 — vitesse droite (broche PWM Mega)
+#define PIN_MOTOR_DIR_RIGHT 7   // DIR2 — sens droite
+
+#define MOTOR_DIR_FORWARD HIGH
+#define MOTOR_DIR_BACKWARD LOW
+
+// Bornes de vitesse PWM (cohérentes avec le backend : 80-150, multiples de 5).
+#define SPEED_MIN 80
+#define SPEED_MAX 150
+
+// ===== Sécurité obstacle (cm) — règle dure, jamais déléguée au réseau =====
+#define OBSTACLE_REFUSE_CM 10  // refuse une commande 'forward' en dessous
+#define OBSTACLE_STOP_CM 5     // arrêt d'urgence immédiat en dessous
 
 #endif  // CONFIG_H

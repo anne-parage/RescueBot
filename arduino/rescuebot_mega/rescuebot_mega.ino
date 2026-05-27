@@ -2,18 +2,45 @@
 // Cerveau temps réel : lecture des capteurs, pilotage moteurs et sécurité
 // obstacle. Communique avec l'ESP32 (pont WiFi/MQTT) via Serial1.
 //
-// Sous-étape 5.1 : capteurs uniquement (ultrason + gaz + calibration).
-// Sortie sur le moniteur série USB pour validation sans ESP32.
+// Sous-étape 5.2 : capteurs + moteurs (DRI0044/TB6612) + sécurité obstacle.
+// Banc d'essai clavier via le moniteur série USB (z/s/q/d/x), TEMPORAIRE :
+// remplacé en 5.3 par la réception des commandes depuis l'ESP32.
 
 #include "config.h"
 #include "gas.h"
+#include "motors.h"
 #include "ultrasonic.h"
+
+// Banc d'essai : pilote les moteurs depuis une touche du moniteur série.
+static void handleTestKey(char c, float frontCm) {
+  switch (c) {
+    case 'z':
+      motorsMove("forward", 120, frontCm);
+      break;
+    case 's':
+      motorsMove("backward", 120, frontCm);
+      break;
+    case 'q':
+      motorsMove("left", 120, frontCm);
+      break;
+    case 'd':
+      motorsMove("right", 120, frontCm);
+      break;
+    case 'x':
+      motorsStop();
+      break;
+    default:
+      break;  // ignore les retours à la ligne et autres touches
+  }
+}
 
 void setup() {
   Serial.begin(SERIAL_DEBUG_BAUD);
   ultrasonicInit();
   gasInit();
-  Serial.println("[MEGA] Démarré — étape 5.1 (capteurs)");
+  motorsInit();
+  Serial.println("[MEGA] Démarré — étape 5.2 (capteurs + moteurs)");
+  Serial.println("[MEGA] Test clavier : z=avant s=arrière q=gauche d=droite x=stop");
 }
 
 void loop() {
@@ -22,9 +49,21 @@ void loop() {
     gasCalibrate();
   }
 
-  // Lecture ultrason (toutes les 200 ms) -> log debug.
-  if (ultrasonicTick()) {
-    UltrasonicReading u = ultrasonicGet();
+  // Lecture ultrason (toutes les 200 ms).
+  bool newUltrasonic = ultrasonicTick();
+  UltrasonicReading u = ultrasonicGet();
+
+  // Sécurité continue : arrêt d'urgence si on avance vers un obstacle proche.
+  motorsTick(u.front);
+
+  // Banc d'essai clavier (sera remplacé par les commandes ESP32 en 5.3).
+  if (Serial.available() > 0) {
+    char c = Serial.read();
+    handleTestKey(c, u.front);
+  }
+
+  // Log debug ultrason.
+  if (newUltrasonic) {
     char buf[80];
     char f[8];
     char b[8];
@@ -39,7 +78,7 @@ void loop() {
     Serial.println(buf);
   }
 
-  // Lecture gaz (toutes les 500 ms) -> log debug.
+  // Log debug gaz (toutes les 500 ms).
   if (gasTick()) {
     GasReading g = gasGet();
     char buf[60];
