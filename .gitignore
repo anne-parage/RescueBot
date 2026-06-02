@@ -32,6 +32,9 @@ dist/
 *.db
 *.sqlite
 
+# Arduino — secrets WiFi (jamais commités)
+arduino/**/secrets.h
+
 # OS
 .DS_Store
 Thumbs.db
