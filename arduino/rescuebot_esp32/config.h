@@ -13,7 +13,7 @@
 
 // ===== Lien série vers le Mega (Serial2) =====
 #define SERIAL_DEBUG_BAUD 115200
-#define SERIAL_LINK_BAUD 115200
+#define SERIAL_LINK_BAUD 9600
 #define PIN_LINK_RX 16  // Serial2 RX <- Mega TX1 (via diviseur 5V -> 3.3V !)
 #define PIN_LINK_TX 17  // Serial2 TX -> Mega RX1
 

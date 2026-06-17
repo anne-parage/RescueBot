@@ -13,9 +13,11 @@ static bool wifiWasConnected = false;
 void wifiMqttInit(MqttCommandHandler handler) {
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
+  WiFi.setSleep(false);  // desactive le modem-sleep WiFi (evite les coupures MQTT)
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   mqtt.setServer(MQTT_BROKER_IP, MQTT_BROKER_PORT);
+  mqtt.setKeepAlive(60);  // keepalive plus tolerant (defaut 15s)
   mqtt.setCallback(handler);
   Serial.println("[ESP32] WiFi/MQTT initialisés");
 }

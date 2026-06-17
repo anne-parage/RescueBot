@@ -7,7 +7,7 @@
 
 // ===== Communication série =====
 #define SERIAL_DEBUG_BAUD 115200   // Serial (USB) : logs de debug
-#define SERIAL_LINK_BAUD 115200    // Serial1 (pins 18/19) : lien vers l'ESP32
+#define SERIAL_LINK_BAUD 9600      // Serial1 (pins 18/19) : lien vers l'ESP32
 
 // ===== Ultrason HC-SR04 (trig = sortie, echo = entrée) =====
 #define PIN_TRIG_FRONT 22
