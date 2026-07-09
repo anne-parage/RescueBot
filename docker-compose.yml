@@ -34,6 +34,30 @@ services:
       - mqtt
     restart: unless-stopped
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_storage:/root/.ollama
+    restart: unless-stopped
+
+  ollama-pull-model:
+    image: curlimages/curl:latest
+    container_name: ollama-pull-model
+    depends_on:
+      - ollama
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Attente du démarrage du serveur Ollama...';
+      until curl -s http://ollama:11434/api/tags > /dev/null; do sleep 2; done;
+      echo 'Ollama est pret ! Telechargement de phi4-mini...';
+      curl -s -N -X POST http://ollama:11434/api/pull -d '{\"name\": \"phi4-mini\"}';
+      echo 'Modele installe avec succes !';
+      "
+    restart: "no"
+
   llm:
     build: ./services/llm
     container_name: llm
@@ -42,6 +66,8 @@ services:
     volumes:
       - ./services/llm/app:/app/app
     env_file: .env
+    depends_on:
+      - ollama
     restart: unless-stopped
 
   frontend:
@@ -60,3 +86,4 @@ services:
 
 volumes:
   rescue-data:
+  ollama_storage:
