@@ -81,14 +81,18 @@ void loop() {
     publishTelemetry(t);
   }
 
-  // Heartbeat : status toutes les 2 s, uniquement si le Mega est vivant.
+  // Heartbeat : status toutes les 2 s dès que le réseau est up.
+  // Découplé du Mega : on publie même si le lien série est muet, avec un flag
+  // mega_alive. Ainsi le dashboard voit "robot connecté" et distingue une panne
+  // réseau d'une panne du lien Mega (au lieu de "rien ne s'affiche").
   unsigned long now = millis();
   if (now - lastStatusMs >= STATUS_PERIOD_MS) {
     lastStatusMs = now;
-    bool megaAlive = megaSeen && (now - lastMegaLineMs < MEGA_TIMEOUT_MS);
-    if (megaAlive && wifiMqttConnected()) {
-      char buf[32];
-      snprintf(buf, sizeof(buf), "{\"uptime\":%lu}", now / 1000);
+    if (wifiMqttConnected()) {
+      bool megaAlive = megaSeen && (now - lastMegaLineMs < MEGA_TIMEOUT_MS);
+      char buf[48];
+      snprintf(buf, sizeof(buf), "{\"uptime\":%lu,\"mega_alive\":%s}",
+               now / 1000, megaAlive ? "true" : "false");
       wifiMqttPublish(TOPIC_STATUS, buf);
     }
   }

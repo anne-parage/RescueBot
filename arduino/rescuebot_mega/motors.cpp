@@ -6,6 +6,7 @@
 
 // État courant du mouvement (pour la sécurité continue).
 static bool movingForward = false;
+static bool movingBackward = false;
 static int currentSpeed = 0;
 
 // Applique sens + vitesse à un moteur (DIR puis PWM), driver TB6612.
@@ -26,10 +27,12 @@ void motorsStop() {
   analogWrite(PIN_MOTOR_PWM_LEFT, 0);
   analogWrite(PIN_MOTOR_PWM_RIGHT, 0);
   movingForward = false;
+  movingBackward = false;
   currentSpeed = 0;
 }
 
-MoveResult motorsMove(const char* direction, int speed, float frontCm) {
+MoveResult motorsMove(const char* direction, int speed, float frontCm,
+                      float backCm) {
   // Validation vitesse : bornes + multiple de 5 (cohérent avec le backend).
   if (speed < SPEED_MIN || speed > SPEED_MAX || (speed % 5) != 0) {
     Serial.print("[MOTORS] Vitesse invalide: ");
@@ -37,10 +40,15 @@ MoveResult motorsMove(const char* direction, int speed, float frontCm) {
     return MOVE_INVALID;
   }
 
-  // SÉCURITÉ (règle dure) : refus d'avancer si obstacle proche.
+  // SÉCURITÉ (règle dure) : refus d'avancer/reculer si obstacle proche.
   if (strcmp(direction, "forward") == 0 && frontCm < OBSTACLE_REFUSE_CM) {
     motorsStop();
-    Serial.println("[MOTORS] forward REFUSÉ — obstacle proche");
+    Serial.println("[MOTORS] forward REFUSÉ — obstacle avant proche");
+    return MOVE_BLOCKED_OBSTACLE;
+  }
+  if (strcmp(direction, "backward") == 0 && backCm < OBSTACLE_REFUSE_CM) {
+    motorsStop();
+    Serial.println("[MOTORS] backward REFUSÉ — obstacle arrière proche");
     return MOVE_BLOCKED_OBSTACLE;
   }
 
@@ -48,20 +56,24 @@ MoveResult motorsMove(const char* direction, int speed, float frontCm) {
     applyMotor(PIN_MOTOR_PWM_LEFT, PIN_MOTOR_DIR_LEFT, true, speed);
     applyMotor(PIN_MOTOR_PWM_RIGHT, PIN_MOTOR_DIR_RIGHT, true, speed);
     movingForward = true;
+    movingBackward = false;
   } else if (strcmp(direction, "backward") == 0) {
     applyMotor(PIN_MOTOR_PWM_LEFT, PIN_MOTOR_DIR_LEFT, false, speed);
     applyMotor(PIN_MOTOR_PWM_RIGHT, PIN_MOTOR_DIR_RIGHT, false, speed);
     movingForward = false;
+    movingBackward = true;
   } else if (strcmp(direction, "left") == 0) {
     // Pivot gauche : roue gauche en arrière, roue droite en avant.
     applyMotor(PIN_MOTOR_PWM_LEFT, PIN_MOTOR_DIR_LEFT, false, speed);
     applyMotor(PIN_MOTOR_PWM_RIGHT, PIN_MOTOR_DIR_RIGHT, true, speed);
     movingForward = false;
+    movingBackward = false;
   } else if (strcmp(direction, "right") == 0) {
     // Pivot droite : roue gauche en avant, roue droite en arrière.
     applyMotor(PIN_MOTOR_PWM_LEFT, PIN_MOTOR_DIR_LEFT, true, speed);
     applyMotor(PIN_MOTOR_PWM_RIGHT, PIN_MOTOR_DIR_RIGHT, false, speed);
     movingForward = false;
+    movingBackward = false;
   } else {
     Serial.print("[MOTORS] Direction inconnue: ");
     Serial.println(direction);
@@ -72,10 +84,14 @@ MoveResult motorsMove(const char* direction, int speed, float frontCm) {
   return MOVE_OK;
 }
 
-void motorsTick(float frontCm) {
-  // Arrêt d'urgence continu : si on avance et obstacle < seuil critique.
+void motorsTick(float frontCm, float backCm) {
+  // Arrêt d'urgence continu : obstacle sous le seuil critique dans le sens
+  // de déplacement (avant si on avance, arrière si on recule).
   if (movingForward && frontCm < OBSTACLE_STOP_CM) {
     motorsStop();
-    Serial.println("[MOTORS] ARRÊT D'URGENCE — obstacle < seuil critique");
+    Serial.println("[MOTORS] ARRÊT D'URGENCE — obstacle avant < seuil critique");
+  } else if (movingBackward && backCm < OBSTACLE_STOP_CM) {
+    motorsStop();
+    Serial.println("[MOTORS] ARRÊT D'URGENCE — obstacle arrière < seuil critique");
   }
 }

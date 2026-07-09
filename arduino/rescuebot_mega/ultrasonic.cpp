@@ -30,6 +30,31 @@ static float readDistanceCm(uint8_t trigPin, uint8_t echoPin) {
   return cm;
 }
 
+// Mesure filtrée : médiane de ULTRASONIC_SAMPLES pings pour lisser le bruit
+// intrinsèque du HC-SR04, sans introduire de latence (contrairement à une
+// moyenne glissante) — la valeur reste réactive quand un objet se rapproche.
+static float readDistanceMedianCm(uint8_t trigPin, uint8_t echoPin) {
+  float samples[ULTRASONIC_SAMPLES];
+  for (uint8_t i = 0; i < ULTRASONIC_SAMPLES; i++) {
+    samples[i] = readDistanceCm(trigPin, echoPin);
+    if (i < ULTRASONIC_SAMPLES - 1) {
+      delayMicroseconds(ULTRASONIC_PING_GAP_US);
+    }
+  }
+
+  // Tri par insertion (tableau minuscule), puis retour de l'élément central.
+  for (uint8_t i = 1; i < ULTRASONIC_SAMPLES; i++) {
+    float key = samples[i];
+    int8_t j = (int8_t)i - 1;
+    while (j >= 0 && samples[j] > key) {
+      samples[j + 1] = samples[j];
+      j--;
+    }
+    samples[j + 1] = key;
+  }
+  return samples[ULTRASONIC_SAMPLES / 2];
+}
+
 void ultrasonicInit() {
   pinMode(PIN_TRIG_FRONT, OUTPUT);
   pinMode(PIN_ECHO_FRONT, INPUT);
@@ -48,10 +73,15 @@ bool ultrasonicTick() {
   }
   lastRead = now;
 
-  reading.front = readDistanceCm(PIN_TRIG_FRONT, PIN_ECHO_FRONT);
-  reading.back = readDistanceCm(PIN_TRIG_BACK, PIN_ECHO_BACK);
-  reading.left = readDistanceCm(PIN_TRIG_LEFT, PIN_ECHO_LEFT);
-  reading.right = readDistanceCm(PIN_TRIG_RIGHT, PIN_ECHO_RIGHT);
+  // Pause entre capteurs : laisse l'écho du capteur précédent se dissiper avant
+  // le tir suivant, sinon le capteur d'après le capte (crosstalk = valeurs bimodales).
+  reading.front = readDistanceMedianCm(PIN_TRIG_FRONT, PIN_ECHO_FRONT);
+  delayMicroseconds(ULTRASONIC_SENSOR_GAP_US);
+  reading.back = readDistanceMedianCm(PIN_TRIG_BACK, PIN_ECHO_BACK);
+  delayMicroseconds(ULTRASONIC_SENSOR_GAP_US);
+  reading.left = readDistanceMedianCm(PIN_TRIG_LEFT, PIN_ECHO_LEFT);
+  delayMicroseconds(ULTRASONIC_SENSOR_GAP_US);
+  reading.right = readDistanceMedianCm(PIN_TRIG_RIGHT, PIN_ECHO_RIGHT);
   return true;
 }
 

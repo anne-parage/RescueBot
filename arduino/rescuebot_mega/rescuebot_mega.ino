@@ -12,12 +12,14 @@
 #include "ultrasonic.h"
 
 // Exécute une commande reçue de l'ESP32 (dispatch vers les modules).
-static void dispatchCommand(const Command& cmd, float frontCm) {
+static void dispatchCommand(const Command& cmd, float frontCm, float backCm) {
   switch (cmd.type) {
     case CMD_MOVE: {
-      MoveResult res = motorsMove(cmd.direction, cmd.speed, frontCm);
+      MoveResult res = motorsMove(cmd.direction, cmd.speed, frontCm, backCm);
       if (res == MOVE_BLOCKED_OBSTACLE) {
-        serialLinkSendObstacleBlocked("forward", frontCm);
+        // Publie le sens réellement refusé et la distance correspondante.
+        bool backward = strcmp(cmd.direction, "backward") == 0;
+        serialLinkSendObstacleBlocked(cmd.direction, backward ? backCm : frontCm);
       }
       break;
     }
@@ -52,12 +54,12 @@ void loop() {
   bool newUltrasonic = ultrasonicTick();
   UltrasonicReading u = ultrasonicGet();
 
-  // Sécurité continue : arrêt d'urgence si on avance vers un obstacle proche.
-  motorsTick(u.front);
+  // Sécurité continue : arrêt d'urgence vers un obstacle avant/arrière proche.
+  motorsTick(u.front, u.back);
 
   // Réception et exécution des commandes de l'ESP32.
   Command cmd = serialLinkPoll();
-  dispatchCommand(cmd, u.front);
+  dispatchCommand(cmd, u.front, u.back);
 
   // Émission ultrason vers l'ESP32 + log debug USB.
   if (newUltrasonic) {

@@ -21,7 +21,12 @@
 
 #define ULTRASONIC_PERIOD_MS 200     // cadence de lecture (= cadence publication)
 #define ULTRASONIC_MAX_CM 400.0      // portée max retournée si pas d'écho
-#define ULTRASONIC_TIMEOUT_US 25000  // timeout pulseIn (~430 cm)
+#define ULTRASONIC_TIMEOUT_US 15000  // timeout pulseIn (~257 cm) — resserré pour
+                                     // tenir la cadence malgré les pings multiples
+#define ULTRASONIC_SAMPLES 3         // pings par mesure : médiane anti-bruit (impair)
+#define ULTRASONIC_PING_GAP_US 1000  // pause entre pings d'un capteur (écho résiduel)
+#define ULTRASONIC_SENSOR_GAP_US 3000  // pause entre capteurs : évite le crosstalk
+                                       // (l'écho d'un capteur vu par le suivant)
 
 // ===== Gaz (entrées analogiques 0-1023) =====
 #define PIN_MQ7 A0    // monoxyde de carbone (CO)

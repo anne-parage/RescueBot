@@ -85,6 +85,9 @@ Telemetry serialLinkPoll() {
 
   while (LINK.available() > 0) {
     char c = LINK.read();
+#if LINK_DEBUG_ECHO
+    Serial.write(c);  // miroir des octets bruts vers l'USB (diagnostic)
+#endif
     if (c == '\n' || c == '\r') {
       if (rxLen > 0) {
         rxBuf[rxLen] = '\0';
