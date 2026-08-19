@@ -53,18 +53,26 @@
 #define EEPROM_ADDR_MAGIC 8           // octet de validité
 #define EEPROM_MAGIC 0x42             // marqueur : EEPROM déjà calibrée
 
-// ===== Moteurs — DFRobot DRI0044 (puce TB6612FNG) =====
-// Pilotage en 2 broches par moteur : DIR (sens) + PWM (vitesse).
-// Moteur "left" = côté gauche, "right" = côté droit.
-// Convention : DIR à MOTOR_DIR_FORWARD = marche avant. Si un moteur tourne
-// à l'envers, inverser ses deux fils moteur (ou échanger les deux #define ci-dessous).
-#define PIN_MOTOR_PWM_LEFT 5    // PWM1 — vitesse gauche (broche PWM Mega)
-#define PIN_MOTOR_DIR_LEFT 4    // DIR1 — sens gauche
-#define PIN_MOTOR_PWM_RIGHT 6   // PWM2 — vitesse droite (broche PWM Mega)
-#define PIN_MOTOR_DIR_RIGHT 7   // DIR2 — sens droite
+// ===== Moteurs — module L298N (double pont en H générique) =====
+// Pilotage en 3 broches par canal : IN1/IN2 (sens) + ENA (vitesse PWM).
+// Canal A = côté gauche (2 moteurs gauche en parallèle sur OUT1/OUT2).
+// Canal B = côté droit  (2 moteurs droit  en parallèle sur OUT3/OUT4).
+// Le code ne voit que 2 canaux : "left" et "right".
+// Convention sens : IN1=HIGH & IN2=LOW = marche avant ; inverse = arrière ;
+// IN1=IN2=LOW = roue libre (stop). Si un côté tourne à l'envers, échanger ses
+// deux fils moteur sur OUTx (ou les deux #define INx ci-dessous).
+// ENA/ENB doivent être sur des broches PWM du Mega (retirer le cavalier ENA/ENB
+// du module L298N pour piloter la vitesse).
+#define PIN_MOTOR_ENA_LEFT 5    // ENA — vitesse gauche (broche PWM Mega)
+#define PIN_MOTOR_IN1_LEFT 4    // IN1 — sens gauche
+#define PIN_MOTOR_IN2_LEFT 8    // IN2 — sens gauche
+#define PIN_MOTOR_ENB_RIGHT 6   // ENB — vitesse droite (broche PWM Mega)
+#define PIN_MOTOR_IN3_RIGHT 7   // IN3 — sens droite
+#define PIN_MOTOR_IN4_RIGHT 9   // IN4 — sens droite
 
-#define MOTOR_DIR_FORWARD HIGH
-#define MOTOR_DIR_BACKWARD LOW
+// Niveaux logiques des broches IN pour la marche avant (IN2 = complément).
+#define MOTOR_IN_FORWARD HIGH
+#define MOTOR_IN_BACKWARD LOW
 
 // Bornes de vitesse PWM (cohérentes avec le backend : 80-150, multiples de 5).
 #define SPEED_MIN 80

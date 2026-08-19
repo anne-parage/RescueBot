@@ -1,8 +1,9 @@
 #ifndef MOTORS_H
 #define MOTORS_H
 
-// Pilotage des moteurs via le driver DFRobot DRI0044 (TB6612FNG) et
-// sécurité obstacle embarquée (jamais déléguée au réseau).
+// Pilotage des moteurs via un module L298N (double pont en H, 2 canaux :
+// gauche = canal A, droite = canal B) et sécurité obstacle embarquée
+// (jamais déléguée au réseau).
 
 enum MoveResult {
   MOVE_OK,               // commande appliquée
